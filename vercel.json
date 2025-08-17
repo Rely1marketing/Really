@@ -1,9 +1,11 @@
 {
   "version": 2,
   "builds": [
-    { "src": "frontend/**", "use": "@vercel/static" }
+    { "src": "frontend/**", "use": "@vercel/static" },
+    { "src": "api/index.py", "use": "@vercel/python" }
   ],
   "routes": [
+    { "src": "/(campaigns|dashboard)(.*)", "dest": "/api$2" },
     { "src": "/(.*)", "dest": "frontend/$1" }
   ]
 }

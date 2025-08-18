@@ -1,3 +1,9 @@
 __pycache__/
 *.pyc
 app.db
+
+server/node_modules/
+server/dist/
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local

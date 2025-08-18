@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
-import app from '../src/server.js';
+import app from '../src/server';
 import { CampaignEvent, Campaign } from '../src/models/index.js';
 
 async function main() {
@@ -24,9 +24,18 @@ async function main() {
         customer_id: `cust${i}`,
         company_id: 'c1',
         phone: `+1000000000${i}`,
+        tags: i === 0 ? ['vip'] : ['regular'],
       })
       .expect(200);
   }
+
+  await agent.get('/find_customers').expect(400);
+
+  const vip = await agent
+    .get('/find_customers')
+    .query({ company_id: 'c1', tags: 'vip' })
+    .expect(200);
+  console.log('found VIP customers', vip.body.length);
 
   await agent
     .post('/start_web_enrichment')
@@ -35,9 +44,6 @@ async function main() {
       sources: [{ kind: 'website', url: 'https://example.com' }],
     })
     .expect(200);
-
-  // run worker
-  await import('../worker/enrichment.js');
 
   const list = await agent
     .get('/list_web_diffs')
@@ -55,7 +61,7 @@ async function main() {
     .send({ company_id: 'c1', brief: 'hi', message: 'hello' })
     .expect(200);
 
-  const campaign = await Campaign.findOne({ campaign_id: camp.body.campaign_id });
+  const campaign: any = await Campaign.findOne({ campaign_id: camp.body.campaign_id }).lean();
   await CampaignEvent.create({
     campaign_id: campaign?._id,
     company_id: campaign?.company_id,
@@ -66,6 +72,12 @@ async function main() {
     company_id: campaign?.company_id,
     type: 'click',
   });
+
+  const snapshot = await agent
+    .get('/get_company_snapshot')
+    .query({ company_id: 'c1' })
+    .expect(200);
+  console.log('snapshot', snapshot.body.company.name);
 
   console.log('e2e flow completed');
 

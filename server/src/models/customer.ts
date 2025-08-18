@@ -17,6 +17,7 @@ const CustomerSchema = new Schema(
     name: String,
     phone: String,
     email: String,
+    tags: [String],
     opt_in: OptInSchema,
   },
   { timestamps: true }

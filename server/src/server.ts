@@ -252,6 +252,51 @@ app.get('/get_company_snapshot', async (req, res) => {
     }
 
     res.json({ company, last_campaign: result });
+// find_customers
+const findCustomersSchema = z.object({
+  company_id: z.string(),
+  tags: z.union([z.string(), z.array(z.string())]).optional(),
+  opt_in_sms: z.coerce.boolean().optional(),
+});
+
+app.get('/find_customers', async (req, res) => {
+  try {
+    const data = findCustomersSchema.parse(req.query);
+    const company = await Company.findOne({ company_id: data.company_id }).lean();
+    if (!company) return res.status(404).json({ error: 'company not found' });
+
+    const query: any = { company_id: company._id };
+    const tags = Array.isArray(data.tags) ? data.tags : data.tags ? [data.tags] : undefined;
+    if (tags) query.tags = { $all: tags };
+    if (typeof data.opt_in_sms === 'boolean') {
+      query['opt_in_sms'] = data.opt_in_sms;
+    }
+
+    const customers = await Customer.find(query).lean();
+    res.json(customers);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+// get_company_snapshot
+const snapshotSchema = z.object({ company_id: z.string() });
+
+app.get('/get_company_snapshot', async (req, res) => {
+  try {
+    const data = snapshotSchema.parse(req.query);
+    const company = await Company.findOne({ company_id: data.company_id }).lean();
+    if (!company) return res.status(404).json({ error: 'company not found' });
+
+    const lastCampaign = await Campaign.findOne({ company_id: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let result: any = null;
+    if (lastCampaign) {
+      result = await CampaignResult.findOne({ campaign_id: lastCampaign._id }).lean();
+    }
+
+    res.json({ company, last_campaign: result });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }

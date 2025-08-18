@@ -10,6 +10,7 @@ import {
   WebSource,
   WebDiff,
 } from './models/index.js';
+import { ensureIndexes } from './initIndexes.js';
 import { randomUUID } from 'crypto';
 
 const app = express();
@@ -252,6 +253,7 @@ app.get('/get_company_snapshot', async (req, res) => {
 
 export async function start() {
   await connect();
+  await ensureIndexes();
   const port = process.env.PORT || 3000;
   return app.listen(port, () => {
     console.log(`Server running on ${port}`);

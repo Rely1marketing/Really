@@ -4,11 +4,11 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
 
-from .database import Base, engine, get_db
-from . import schemas, crud, models
-from .openai_utils import generate_variants
-from .twilio_utils import send_sms
-from .scheduler import schedule
+from backend.database import Base, engine, get_db
+from backend import schemas, crud, models
+from backend.openai_utils import generate_variants
+from backend.twilio_utils import send_sms
+from backend.scheduler import schedule
 
 Base.metadata.create_all(bind=engine)
 

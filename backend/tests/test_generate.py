@@ -1,10 +1,10 @@
 from fastapi.testclient import TestClient
 from unittest.mock import patch
-from backend.main import app
+from api.index import app
 
 client = TestClient(app)
 
-@patch("backend.main.generate_variants", return_value=["Hello A", "Hello B"])
+@patch("api.index.generate_variants", return_value=["Hello A", "Hello B"])
 def test_generate_campaign(mock_gen):
     response = client.post("/campaigns/generate", json={"goal": "sell"})
     assert response.status_code == 200

@@ -1,0 +1,129 @@
+[
+  {
+    "name": "save_company_profile",
+    "description": "Create or update a company profile",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "name": { "type": "string" },
+        "channels": { "type": "array", "items": { "type": "string" } },
+        "brand_tone": { "type": "string" },
+        "locales": { "type": "array", "items": { "type": "string" } },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "type": "string" },
+              "hours": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "required": ["company_id", "name"]
+    }
+  },
+  {
+    "name": "save_customer",
+    "description": "Upsert customer for a company",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customer_id": { "type": "string" },
+        "company_id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "opt_in": {
+          "type": "object",
+          "properties": {
+            "sms": { "type": "boolean" },
+            "sms_ts": { "type": "string", "format": "date-time" },
+            "email": { "type": "boolean" },
+            "email_ts": { "type": "string", "format": "date-time" }
+          }
+        }
+      },
+      "required": ["customer_id", "company_id"]
+    }
+  },
+  {
+    "name": "record_campaign",
+    "description": "Create a campaign",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "campaign_id": { "type": "string" },
+        "brief": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["company_id"]
+    }
+  },
+  {
+    "name": "record_campaign_results",
+    "description": "Update campaign results",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaign_id": { "type": "string" },
+        "replies_7d": { "type": "number" },
+        "clicks_7d": { "type": "number" },
+        "bookings_7d": { "type": "number" }
+      },
+      "required": ["campaign_id"]
+    }
+  },
+  {
+    "name": "start_web_enrichment",
+    "description": "Register sources and start web enrichment",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "object", "properties": { "kind": { "type": "string" }, "url": { "type": "string", "format": "uri" } }, "required": ["kind", "url"] }
+        }
+      },
+      "required": ["company_id", "sources"]
+    }
+  },
+  {
+    "name": "list_web_diffs",
+    "description": "List pending web diffs for a company",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" }
+      },
+      "required": ["company_id"]
+    }
+  },
+  {
+    "name": "apply_web_diff",
+    "description": "Approve or reject a diff",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "diff_id": { "type": "string" },
+        "action": { "type": "string", "enum": ["approve", "reject"] }
+      },
+      "required": ["diff_id", "action"]
+    }
+  },
+  {
+    "name": "get_policy_status",
+    "description": "Get policy status for a channel",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "channel": { "type": "string" }
+      },
+      "required": ["company_id", "channel"]
+    }
+  }
+]

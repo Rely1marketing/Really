@@ -45,9 +45,6 @@ async function main() {
     })
     .expect(200);
 
-  // run worker
-  await import('../worker/enrichment.js');
-
   const list = await agent
     .get('/list_web_diffs')
     .query({ company_id: 'c1' })

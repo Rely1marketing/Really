@@ -262,7 +262,7 @@ const findCustomersSchema = z.object({
 app.get('/find_customers', async (req, res) => {
   try {
     const data = findCustomersSchema.parse(req.query);
-const company = await Company.findOne({ company_id: data.company_id }).lean();
+    const company = await Company.findOne({ company_id: data.company_id }).lean();
     if (!company) return res.status(404).json({ error: 'company not found' });
 
     const query: any = { company_id: company._id };
@@ -278,7 +278,6 @@ const company = await Company.findOne({ company_id: data.company_id }).lean();
     res.status(400).json({ error: (err as Error).message });
   }
 });
-
 // get_company_snapshot
 const snapshotSchema = z.object({ company_id: z.string() });
 
@@ -292,17 +291,12 @@ app.get('/get_company_snapshot', async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    let result = null;
+    let result: any = null;
     if (lastCampaign) {
       result = await CampaignResult.findOne({ campaign_id: lastCampaign._id }).lean();
     }
 
     res.json({ company, last_campaign: result });
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }

@@ -26,10 +26,14 @@ async function generate() {
   const div = document.getElementById('variants');
   div.innerHTML = '';
   data.variants.forEach(v => {
-    const btn = document.createElement('button');
-    btn.innerText = v.variant + ': ' + v.text;
-    btn.onclick = () => { selectedVariant = v.variant; };
-    div.appendChild(btn);
+    const p = document.createElement('p');
+    p.innerText = v.variant + ': ' + v.text;
+    p.onclick = () => {
+      selectedVariant = v.variant;
+      Array.from(div.children).forEach(c => c.classList.remove('selected'));
+      p.classList.add('selected');
+    };
+    div.appendChild(p);
   });
 }
 

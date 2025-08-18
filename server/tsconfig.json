@@ -11,6 +11,6 @@
   },
   "include": ["src", "tests", "scripts", "worker"],
   "ts-node": {
-    "swc": true
+    "swc": false
   }
 }

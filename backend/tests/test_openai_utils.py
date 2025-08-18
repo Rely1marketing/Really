@@ -1,3 +1,14 @@
+"""Tests for utility fallbacks used when OpenAI isn't available.
+
+The test module tweaks ``sys.path`` so it can import the package when running
+from the repository root without installation.
+"""
+
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from backend import openai_utils
 
 

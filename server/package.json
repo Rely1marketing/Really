@@ -4,17 +4,20 @@
   "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
-  "build": "tsc",
-  "start": "node dist/server.js",
-  "dev": "ts-node src/server.ts",
-  "test": "node -e \"console.log('server tests skipped')\"",
-  "seed": "ts-node ./scripts/seed.ts"
-},
+codex/develop-ai-chat-product-with-integrations-z3cluf
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "TS_NODE_TRANSPILE_ONLY=1 RUN_SERVER=1 ts-node src/server.ts",
+    "test": "node -e \"console.log('server tests skipped')\"",
+    "seed": "ts-node ../scripts/seed.ts"
+  },
+ main
   "dependencies": {
     "express": "^4.19.2",
     "mongoose": "^8.3.4",
     "zod": "^3.22.4",
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

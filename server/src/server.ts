@@ -252,6 +252,7 @@ app.get('/get_company_snapshot', async (req, res) => {
     }
 
     res.json({ company, last_campaign: result });
+
 // find_customers
 const findCustomersSchema = z.object({
   company_id: z.string(),
@@ -297,6 +298,7 @@ app.get('/get_company_snapshot', async (req, res) => {
     }
 
     res.json({ company, last_campaign: result });
+main
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }

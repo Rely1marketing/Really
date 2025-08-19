@@ -1,14 +1,28 @@
-# Re-Ly AI MVP
+# Really.ai MVP
 
-Minimal prototype of an autonomous SMS marketing agent with FastAPI backend and simple frontend.
+Minimal chat-first prototype with a Next.js frontend, Node/Express backend and MongoDB.
 
-## Backend
-- FastAPI API for campaign generation, sending, click tracking and dashboard metrics.
-- SQLite database with SQLAlchemy models.
-- OpenAI for copy generation and Twilio for SMS sending (credentials via environment variables).
+## Configuration
 
-## Frontend
-- Static HTML/JS dashboard to create campaigns and view metrics.
+1. Copy environment examples:
+   ```
+   cp .env.local.example .env.local
+   cp frontend/.env.local.example frontend/.env.local
+   ```
+2. Fill in the values:
+   - `OPENAI_API_KEY` – your OpenAI key
+   - `OPENAI_MODEL` – model name (default `gpt-4o`)
+   - `MONGO_URI` – Mongo connection string
+   - `PORT` – backend port (default `3001`)
+   - `BACKEND_URL` (frontend) – URL to the backend server
 
-## Tests
-Run tests with `pytest`.
+## Running
+
+- `npm run dev` – starts backend and frontend development servers
+- `npm run seed` – populate Mongo with demo data
+
+## Testing
+
+- `cd server && npm test`
+- `cd frontend && npm test`
+- `pytest`

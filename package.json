@@ -1,0 +1,8 @@
+{
+  "name": "really",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix server & npm run dev --prefix frontend & wait",
+    "seed": "npm run seed --prefix server"
+  }
+}

@@ -35,6 +35,7 @@
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
         "opt_in": {
           "type": "object",
           "properties": {
@@ -124,6 +125,30 @@
         "channel": { "type": "string" }
       },
       "required": ["company_id", "channel"]
+    }
+  },
+  {
+    "name": "find_customers",
+    "description": "Find customers by tags or opt-in status",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "opt_in_sms": { "type": "boolean" }
+      },
+      "required": ["company_id"]
+    }
+  },
+  {
+    "name": "get_company_snapshot",
+    "description": "Get company profile and latest campaign results",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" }
+      },
+      "required": ["company_id"]
     }
   }
 ]

@@ -10,7 +10,9 @@ import {
   WebSource,
   WebDiff,
 } from './models/index.js';
+import { ensureIndexes } from './initIndexes.js';
 import { randomUUID } from 'crypto';
+import { getPolicyStatus } from './policy.js';
 
 const app = express();
 app.use(express.json());
@@ -53,6 +55,7 @@ const customerSchema = z.object({
   name: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   opt_in: z
     .object({
       sms: z.boolean().optional(),
@@ -136,15 +139,25 @@ app.post('/start_web_enrichment', async (req, res) => {
     const data = enrichmentSchema.parse(req.body);
     const company = await Company.findOne({ company_id: data.company_id });
     if (!company) return res.status(404).json({ error: 'company not found' });
+    let diffsCreated = 0;
     for (const src of data.sources) {
-      await WebSource.create({
+      const source = await WebSource.create({
         source_id: randomUUID(),
         company_id: company._id,
         kind: src.kind,
         url: src.url,
       });
+      await WebDiff.create({
+        diff_id: randomUUID(),
+        company_id: company._id,
+        source_id: source._id,
+        diff: { title: 'Example Title from web' },
+        status: 'pending',
+        detected_at: new Date(),
+      });
+      diffsCreated++;
     }
-    res.json({ status: 'queued', sources: data.sources.length });
+    res.json({ status: 'queued', sources: data.sources.length, diffs: diffsCreated });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -189,13 +202,56 @@ const policySchema = z.object({ company_id: z.string(), channel: z.string() });
 app.get('/get_policy_status', async (req, res) => {
   try {
     const data = policySchema.parse(req.query);
-    res.json({
-      company_id: data.company_id,
-      channel: data.channel,
-      quiet_hours: '21:00-08:00',
-      max_per_week: 3,
-      opt_in_required: true,
-    });
+    const status = await getPolicyStatus(data.company_id, data.channel);
+    res.json(status);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// find_customers
+const findCustomersSchema = z.object({
+  company_id: z.string(),
+  tags: z.union([z.string(), z.array(z.string())]).optional(),
+  opt_in_sms: z.coerce.boolean().optional(),
+});
+
+app.get('/find_customers', async (req, res) => {
+  try {
+    const data = findCustomersSchema.parse(req.query);
+    const company = await Company.findOne({ company_id: data.company_id });
+    if (!company) return res.status(404).json({ error: 'company not found' });
+    const query: any = { company_id: company._id };
+    const tags = Array.isArray(data.tags) ? data.tags : data.tags ? [data.tags] : undefined;
+    if (tags) query.tags = { $all: tags };
+    if (typeof data.opt_in_sms === 'boolean') {
+      query['opt_in.sms'] = data.opt_in_sms;
+    }
+    const customers = await Customer.find(query).lean();
+    res.json(customers);
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// get_company_snapshot
+const snapshotSchema = z.object({ company_id: z.string() });
+
+app.get('/get_company_snapshot', async (req, res) => {
+  try {
+    const data = snapshotSchema.parse(req.query);
+    const company = await Company.findOne({ company_id: data.company_id }).lean();
+    if (!company) return res.status(404).json({ error: 'company not found' });
+
+    const lastCampaign = await Campaign.findOne({ company_id: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    let result = null;
+    if (lastCampaign) {
+      result = await CampaignResult.findOne({ campaign_id: lastCampaign._id }).lean();
+    }
+
+    res.json({ company, last_campaign: result });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -203,6 +259,7 @@ app.get('/get_policy_status', async (req, res) => {
 
 export async function start() {
   await connect();
+  await ensureIndexes();
   const port = process.env.PORT || 3000;
   return app.listen(port, () => {
     console.log(`Server running on ${port}`);

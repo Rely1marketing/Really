@@ -4,12 +4,14 @@
   "type": "commonjs",
   "main": "dist/server.js",
   "scripts": {
+codex/develop-ai-chat-product-with-integrations-z3cluf
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "TS_NODE_TRANSPILE_ONLY=1 RUN_SERVER=1 ts-node src/server.ts",
     "test": "node -e \"console.log('server tests skipped')\"",
     "seed": "ts-node ../scripts/seed.ts"
   },
+ main
   "dependencies": {
     "express": "^4.19.2",
     "mongoose": "^8.3.4",

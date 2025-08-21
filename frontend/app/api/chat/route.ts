@@ -1,7 +1,10 @@
 // app/api/chat/route.ts
 import { NextRequest } from "next/server";
-import { openaiClient } from "@/lib/openai";
+import { getOpenAIClient } from "@/lib/openai"; // ⬅️ ändrad import
 import tools from "../../../../server/tools.json";
+
+export const runtime = "nodejs";           // (valfritt) tydliggör Node runtime
+export const dynamic = "force-dynamic";    // (valfritt) undvik caching
 
 const SYSTEM_PROMPT =
   "Du är en Really.ai-assistent. Fråga alltid om samtycke när persondata importeras eller webbenrichment sker. Respektera quiet hours. När data saknas: ställ följdfrågor. När kampanj efterfrågas: ge 2–3 SMS-förslag + CTA + föreslagen tid (inte inom quiet hours) + kort motivering.";
@@ -14,8 +17,8 @@ export async function POST(req: NextRequest) {
   ];
 
   const backendBase = process.env.BACKEND_URL || "http://localhost:3001";
+  const openaiClient = getOpenAIClient(); // ⬅️ skapa här (runtime)
 
-  // Starta en streamad completion
   const response = await openaiClient.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-4o",
     stream: true,
@@ -32,11 +35,9 @@ export async function POST(req: NextRequest) {
         for await (const part of response) {
           const choice = part.choices?.[0];
 
-          // Streama text
           const piece = choice?.delta?.content;
           if (piece) controller.enqueue(encoder.encode(piece));
 
-          // Samla tool calls (kan sakna id i tidiga chunkar)
           const calls = choice?.delta?.tool_calls;
           if (calls && calls.length) {
             for (let i = 0; i < calls.length; i++) {
@@ -57,7 +58,6 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
 
-        // Kör ev. tool calls i bakgrunden (best effort)
         for (const tc of Object.values(toolCalls)) {
           try {
             const args = tc.arguments ? JSON.parse(tc.arguments) : {};

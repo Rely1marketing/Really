@@ -1,3 +1,4 @@
+// app/api/chat/route.ts
 import { NextRequest } from "next/server";
 import { openaiClient } from "@/lib/openai";
 import tools from "../../../../server/tools.json";
@@ -35,14 +36,19 @@ export async function POST(req: NextRequest) {
           const piece = choice?.delta?.content;
           if (piece) controller.enqueue(encoder.encode(piece));
 
-          // Samla på oss eventuella tool calls
+          // Samla på oss eventuella tool calls (kan komma i chunkar utan id)
           const calls = choice?.delta?.tool_calls;
-          if (calls) {
-            for (const tc of calls) {
-              const existing =
-                toolCalls[tc.id] || { name: tc.function?.name || "", arguments: "" };
-              existing.arguments += tc.function?.arguments || "";
-              toolCalls[tc.id] = existing;
+          if (calls && calls.length) {
+            for (const [i, tc] of calls.entries()) {
+              const id = tc.id ?? `tc-${Date.now()}-${i}`;
+              const name = tc.function?.name || "";
+              const argsChunk = tc.function?.arguments || "";
+
+              const existing = toolCalls[id] || { name, arguments: "" };
+              // Fyll i namn om första chunken saknade det
+              if (!existing.name && name) existing.name = name;
+              existing.arguments += argsChunk;
+              toolCalls[id] = existing;
             }
           }
         }

@@ -1,6 +1,6 @@
 // app/api/chat/route.ts
 import { NextRequest } from "next/server";
-import { getOpenAIClient } from "@/lib/openai"; // ⬅️ ändrad import
+import { getOpenAIClient } from "@/lib/openai";
 import tools from "../../../../server/tools.json";
 
 export const runtime = "nodejs";           // (valfritt) tydliggör Node runtime
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   ];
 
   const backendBase = process.env.BACKEND_URL || "http://localhost:3001";
-  const openaiClient = getOpenAIClient(); // ⬅️ skapa här (runtime)
+  const openaiClient = getOpenAIClient();
 
   const response = await openaiClient.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-4o",
@@ -35,13 +35,15 @@ export async function POST(req: NextRequest) {
         for await (const part of response) {
           const choice = part.choices?.[0];
 
+          // streama text
           const piece = choice?.delta?.content;
           if (piece) controller.enqueue(encoder.encode(piece));
 
+          // samla tool calls (kan sakna id i tidiga chunkar)
           const calls = choice?.delta?.tool_calls;
           if (calls && calls.length) {
             for (let i = 0; i < calls.length; i++) {
-              const tc = calls[i];
+              const tc = calls[i] as any;
               const id = tc.id ?? `tc-${Date.now()}-${i}`;
               const name = tc.function?.name || "";
               const argsChunk = tc.function?.arguments || "";
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
 
+        // kör ev. tool calls i bakgrunden (best effort)
         for (const tc of Object.values(toolCalls)) {
           try {
             const args = tc.arguments ? JSON.parse(tc.arguments) : {};
@@ -80,5 +83,4 @@ export async function POST(req: NextRequest) {
       "Cache-Control": "no-cache",
     },
   });
- main
 }

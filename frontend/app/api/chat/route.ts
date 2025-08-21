@@ -32,20 +32,20 @@ export async function POST(req: NextRequest) {
         for await (const part of response) {
           const choice = part.choices?.[0];
 
-          // Skicka vidare text till klienten
+          // Streama text
           const piece = choice?.delta?.content;
           if (piece) controller.enqueue(encoder.encode(piece));
 
-          // Samla på oss eventuella tool calls (kan komma i chunkar utan id)
+          // Samla tool calls (kan sakna id i tidiga chunkar)
           const calls = choice?.delta?.tool_calls;
           if (calls && calls.length) {
-            for (const [i, tc] of calls.entries()) {
+            for (let i = 0; i < calls.length; i++) {
+              const tc = calls[i];
               const id = tc.id ?? `tc-${Date.now()}-${i}`;
               const name = tc.function?.name || "";
               const argsChunk = tc.function?.arguments || "";
 
               const existing = toolCalls[id] || { name, arguments: "" };
-              // Fyll i namn om första chunken saknade det
               if (!existing.name && name) existing.name = name;
               existing.arguments += argsChunk;
               toolCalls[id] = existing;

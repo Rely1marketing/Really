@@ -2,7 +2,7 @@ import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import app from '../src/server';
-import { CampaignEvent, Campaign, CampaignResult } from '../src/models';
+import { CampaignEvent, Campaign } from '../src/models';
 
 async function main() {
   const mongo = await MongoMemoryServer.create();
@@ -17,15 +17,16 @@ async function main() {
     .send({ company_id: 'c1', name: 'Acme', locales: ['Europe/Stockholm'] })
     .expect(200);
 
-  const policy = await agent
-    .get('/get_policy_status')
-    .query({
-      company_id: 'c1',
-      channel: 'sms',
-      datetime: '2025-01-01T20:00:00.000Z',
-    })
-    .expect(200);
-  console.log('policy allowed', policy.body.allowed);
+const policy = await agent
+  .get('/get_policy_status')
+  .query({
+    company_id: 'c1',
+    channel: 'sms',
+    datetime: '2025-01-01T20:00:00.000Z',
+  })
+  .expect(200);
+
+console.log('policy allowed', policy.body.allowed);
 
   for (let i = 0; i < 3; i++) {
     await agent
@@ -95,12 +96,11 @@ async function main() {
   const evCount = await CampaignEvent.countDocuments({ campaign_id: campaign._id });
   console.log('events logged', evCount);
 
-  const result: any = await CampaignResult.findOne({ campaign_id: campaign._id }).lean();
-  console.log('aggregates', result?.replies_7d, result?.clicks_7d);
-  if (result?.replies_7d !== 1 || result?.clicks_7d !== 1) {
-    throw new Error('aggregation failed');
-  }
-
+const result = await CampaignResult.findOne({ campaign_id: campaign._id }).lean();
+console.log('aggregates', result?.replies_7d, result?.clicks_7d);
+if (!result || result.replies_7d !== 1 || result.clicks_7d !== 1) {
+  throw new Error('aggregation failed');
+}
   console.log('snapshot title', campaign.snapshot?.web_enrichment?.title);
 
   const snapshot = await agent

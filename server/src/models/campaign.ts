@@ -6,6 +6,8 @@ const CampaignSchema = new Schema(
     company_id: { type: Schema.Types.ObjectId, ref: 'Company', required: true },
     brief: String,
     message: String,
+    channel: String,
+    scheduled_at: Date,
     snapshot: Schema.Types.Mixed,
   },
   { timestamps: true }

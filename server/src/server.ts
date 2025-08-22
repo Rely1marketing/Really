@@ -1,6 +1,6 @@
 import express from 'express';
 import { z } from 'zod';
-import { connect } from './db.js';
+import { connect } from './db';
 import {
   Company,
   Customer,
@@ -9,10 +9,10 @@ import {
   CampaignResult,
   WebSource,
   WebDiff,
-} from './models/index.js';
-import { ensureIndexes } from './initIndexes.js';
+} from './models';
+import { ensureIndexes } from './initIndexes';
 import { randomUUID } from 'crypto';
-import { getPolicyStatus } from './policy.js';
+import { getPolicyStatus } from './policy';
 
 const app = express();
 app.use(express.json());
@@ -86,19 +86,49 @@ const campaignSchema = z.object({
   campaign_id: z.string().optional(),
   brief: z.string().optional(),
   message: z.string().optional(),
+  channel: z.string().default('sms'),
+  scheduled_at: z.string().datetime().optional(),
 });
 
 app.post('/record_campaign', async (req, res) => {
   try {
     const data = campaignSchema.parse(req.body);
+    const company = (await Company.findOne({ company_id: data.company_id }).lean()) as any;
+    if (!company) return res.status(404).json({ error: 'company not found' });
+
     const campaign_id = data.campaign_id || randomUUID();
-    const campaign = await Campaign.create({ ...data, campaign_id });
+    let scheduled_at = data.scheduled_at;
+
+    const policy = await getPolicyStatus(data.company_id, data.channel, scheduled_at);
+    if (!policy.allowed && policy.suggested_time) {
+      scheduled_at = policy.suggested_time;
+    }
+
+    const lastCampaign = await Campaign.findOne({ company_id: company._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    let lastResult: any = null;
+    if (lastCampaign) {
+      lastResult = await CampaignResult.findOne({ campaign_id: lastCampaign._id }).lean();
+    }
+    const snapshot = { web_enrichment: company.web_enrichment, last_result: lastResult };
+
+    const campaign = (await Campaign.create({
+      campaign_id,
+      company_id: company._id,
+      brief: data.brief,
+      message: data.message,
+      channel: data.channel,
+      scheduled_at,
+      snapshot,
+    })) as any;
+
     await CampaignEvent.create({
       campaign_id: campaign._id,
       company_id: campaign.company_id,
       type: 'campaign_created',
     });
-    res.json({ campaign_id });
+    res.json({ campaign_id, scheduled_at });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }
@@ -122,6 +152,51 @@ app.post('/record_campaign_results', async (req, res) => {
       { ...data, campaign_id: campaign._id },
       { upsert: true }
     );
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+// record_campaign_event
+const eventSchema = z.object({
+  campaign_id: z.string(),
+  type: z.enum(['delivered', 'reply', 'click', 'booking']),
+  metadata: z.record(z.any()).optional(),
+});
+
+async function updateCampaignAggregates(campaignId: any) {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const agg = await CampaignEvent.aggregate([
+    { $match: { campaign_id: campaignId, occurred_at: { $gte: since } } },
+    { $group: { _id: '$type', count: { $sum: 1 } } },
+  ]);
+  const counts: any = { replies_7d: 0, clicks_7d: 0, bookings_7d: 0 };
+  for (const a of agg) {
+    if (a._id === 'reply') counts.replies_7d = a.count;
+    if (a._id === 'click') counts.clicks_7d = a.count;
+    if (a._id === 'booking') counts.bookings_7d = a.count;
+  }
+  await CampaignResult.findOneAndUpdate(
+    { campaign_id: campaignId },
+    { campaign_id: campaignId, ...counts },
+    { upsert: true }
+  );
+}
+
+app.post('/record_campaign_event', async (req, res) => {
+  try {
+    const data = eventSchema.parse(req.body);
+    const campaign = (await Campaign.findOne({ campaign_id: data.campaign_id }).lean()) as any;
+    if (!campaign) return res.status(404).json({ error: 'campaign not found' });
+
+    await CampaignEvent.create({
+      campaign_id: campaign._id,
+      company_id: campaign.company_id,
+      type: data.type,
+      metadata: data.metadata,
+    });
+    await updateCampaignAggregates(campaign._id);
     res.json({ status: 'ok' });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
@@ -183,7 +258,7 @@ const applyDiffSchema = z.object({ action: z.enum(['approve', 'reject']) });
 app.post('/apply_web_diff/:id', async (req, res) => {
   try {
     const data = applyDiffSchema.parse(req.body);
-    const diff = await WebDiff.findOne({ diff_id: req.params.id });
+    const diff = (await WebDiff.findOne({ diff_id: req.params.id })) as any;
     if (!diff) return res.status(404).json({ error: 'diff not found' });
     diff.status = data.action === 'approve' ? 'approved' : 'rejected';
     if (data.action === 'approve') {
@@ -198,11 +273,15 @@ app.post('/apply_web_diff/:id', async (req, res) => {
 });
 
 // get_policy_status
-const policySchema = z.object({ company_id: z.string(), channel: z.string() });
+const policySchema = z.object({
+  company_id: z.string(),
+  channel: z.string(),
+  datetime: z.string().datetime().optional(),
+});
 app.get('/get_policy_status', async (req, res) => {
   try {
     const data = policySchema.parse(req.query);
-    const status = await getPolicyStatus(data.company_id, data.channel);
+    const status = await getPolicyStatus(data.company_id, data.channel, data.datetime);
     res.json(status);
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
@@ -252,53 +331,6 @@ app.get('/get_company_snapshot', async (req, res) => {
     }
 
     res.json({ company, last_campaign: result });
-
-// find_customers
-const findCustomersSchema = z.object({
-  company_id: z.string(),
-  tags: z.union([z.string(), z.array(z.string())]).optional(),
-  opt_in_sms: z.coerce.boolean().optional(),
-});
-
-app.get('/find_customers', async (req, res) => {
-  try {
-    const data = findCustomersSchema.parse(req.query);
-    const company = await Company.findOne({ company_id: data.company_id }).lean();
-    if (!company) return res.status(404).json({ error: 'company not found' });
-
-    const query: any = { company_id: company._id };
-    const tags = Array.isArray(data.tags) ? data.tags : data.tags ? [data.tags] : undefined;
-    if (tags) query.tags = { $all: tags };
-    if (typeof data.opt_in_sms === 'boolean') {
-      query['opt_in_sms'] = data.opt_in_sms;
-    }
-
-    const customers = await Customer.find(query).lean();
-    res.json(customers);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
-});
-// get_company_snapshot
-const snapshotSchema = z.object({ company_id: z.string() });
-
-app.get('/get_company_snapshot', async (req, res) => {
-  try {
-    const data = snapshotSchema.parse(req.query);
-    const company = await Company.findOne({ company_id: data.company_id }).lean();
-    if (!company) return res.status(404).json({ error: 'company not found' });
-
-    const lastCampaign = await Campaign.findOne({ company_id: company._id })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    let result: any = null;
-    if (lastCampaign) {
-      result = await CampaignResult.findOne({ campaign_id: lastCampaign._id }).lean();
-    }
-
-    res.json({ company, last_campaign: result });
-main
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }

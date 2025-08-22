@@ -14,13 +14,19 @@ async function main() {
 
   await agent
     .post('/save_company_profile')
-    .send({ company_id: 'c1', name: 'Acme' })
+    .send({ company_id: 'c1', name: 'Acme', locales: ['Europe/Stockholm'] })
     .expect(200);
 
-  await agent
-    .get('/get_policy_status')
-    .query({ company_id: 'c1', channel: 'sms' })
-    .expect(200);
+const policy = await agent
+  .get('/get_policy_status')
+  .query({
+    company_id: 'c1',
+    channel: 'sms',
+    datetime: '2025-01-01T20:00:00.000Z',
+  })
+  .expect(200);
+
+console.log('policy allowed', policy.body.allowed);
 
   for (let i = 0; i < 3; i++) {
     await agent
@@ -63,8 +69,18 @@ async function main() {
 
   const camp = await agent
     .post('/record_campaign')
-    .send({ company_id: 'c1', brief: 'hi', message: 'hello' })
+    .send({
+      company_id: 'c1',
+      brief: 'hi',
+      message: 'hello',
+      channel: 'sms',
+      scheduled_at: '2025-01-01T20:00:00.000Z',
+    })
     .expect(200);
+  console.log('scheduled_at', camp.body.scheduled_at);
+  if (camp.body.scheduled_at === '2025-01-01T20:00:00.000Z') {
+    throw new Error('campaign was not rescheduled');
+  }
 
   const campaign: any = await Campaign.findOne({ campaign_id: camp.body.campaign_id }).lean();
 
@@ -80,6 +96,11 @@ async function main() {
   const evCount = await CampaignEvent.countDocuments({ campaign_id: campaign._id });
   console.log('events logged', evCount);
 
+const result = await CampaignResult.findOne({ campaign_id: campaign._id }).lean();
+console.log('aggregates', result?.replies_7d, result?.clicks_7d);
+if (!result || result.replies_7d !== 1 || result.clicks_7d !== 1) {
+  throw new Error('aggregation failed');
+}
   console.log('snapshot title', campaign.snapshot?.web_enrichment?.title);
 
   const snapshot = await agent

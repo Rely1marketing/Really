@@ -82,19 +82,35 @@ export function suggestNextAllowedTime(
 
 import { Company } from './models';
 
-export async function getPolicyStatus(company_id: string, channel: string) {
+export async function getPolicyStatus(
+  company_id: string,
+  channel: string,
+  datetime?: string | Date
+) {
   const company = (await Company.findOne({ company_id }).lean()) as any;
   if (!company) {
     throw new Error('company not found');
   }
   const tz = (company.locales && company.locales[0]) || 'Europe/Stockholm';
-  const now = new Date();
+  const at = datetime ? new Date(datetime) : new Date();
   const reasons: string[] = [];
-  const allowed = !isQuietHour(now, tz);
+  const allowed = !isQuietHour(at, tz);
   let suggested_time: string | undefined;
   if (!allowed) {
     reasons.push('quiet_hours');
-    suggested_time = suggestNextAllowedTime(tz, now);
+    suggested_time = suggestNextAllowedTime(tz, at);
   }
-  return { allowed, reasons, suggested_time };
+  const quiet_hours = { start: `${String(QUIET_START).padStart(2, '0')}:00`, end: `${
+    String(QUIET_END).padStart(2, '0')
+  }:00` };
+  const max_per_week = 5;
+  const opt_in_required = channel === 'sms' || channel === 'email';
+  return {
+    allowed,
+    reasons,
+    suggested_time,
+    quiet_hours,
+    max_per_week,
+    opt_in_required,
+  };
 }

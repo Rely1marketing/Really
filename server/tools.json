@@ -58,9 +58,11 @@
         "company_id": { "type": "string" },
         "campaign_id": { "type": "string" },
         "brief": { "type": "string" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "channel": { "type": "string" },
+        "scheduled_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["company_id"]
+      "required": ["company_id", "channel"]
     }
   },
   {
@@ -138,7 +140,8 @@
       "type": "object",
       "properties": {
         "company_id": { "type": "string" },
-        "channel": { "type": "string" }
+        "channel": { "type": "string" },
+        "datetime": { "type": "string", "format": "date-time" }
       },
       "required": ["company_id", "channel"]
     }

@@ -1,4 +1,4 @@
-import { Company, Customer, Campaign, CampaignEvent, CampaignResult, WebSource, WebDiff } from './models/index.js';
+import { Company, Customer, Campaign, CampaignEvent, CampaignResult, WebSource, WebDiff } from './models';
 
 export async function ensureIndexes() {
   await Promise.all([

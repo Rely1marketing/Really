@@ -78,6 +78,22 @@
     }
   },
   {
+    "name": "record_campaign_event",
+    "description": "Log a campaign event such as delivery or reply",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaign_id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["delivered", "reply", "click", "booking"]
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "required": ["campaign_id", "type"]
+    }
+  },
+  {
     "name": "start_web_enrichment",
     "description": "Register sources and start web enrichment",
     "parameters": {

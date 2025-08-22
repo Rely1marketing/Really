@@ -13,6 +13,8 @@ import {
 import { ensureIndexes } from './initIndexes';
 import { randomUUID } from 'crypto';
 import { getPolicyStatus } from './policy';
+import { randomUUID } from 'crypto';
+import { getPolicyStatus } from './policy';
 import { tracer } from './telemetry';
 
 const app = express();
@@ -104,12 +106,19 @@ app.post('/record_campaign', async (req, res) => {
     if (!company) return res.status(404).json({ error: 'company not found' });
 
     const campaign_id = data.campaign_id || randomUUID();
-    let scheduled_at = data.scheduled_at;
+let scheduled_at = data.scheduled_at;
 
-    const policy = await getPolicyStatus(data.company_id, data.channel, scheduled_at);
-    if (!policy.allowed && policy.suggested_time) {
-      scheduled_at = policy.suggested_time;
-    }
+const policy = await getPolicyStatus(
+  data.company_id,
+  data.channel,
+  scheduled_at
+);
+
+if (!policy.allowed && policy.suggested_time) {
+  // Om ditt Mongoose-schema kräver Date:
+  // scheduled_at = new Date(policy.suggested_time);
+  scheduled_at = policy.suggested_time;
+}
 
     const lastCampaign = await Campaign.findOne({ company_id: company._id })
       .sort({ createdAt: -1 })
@@ -125,8 +134,15 @@ app.post('/record_campaign', async (req, res) => {
       company_id: company._id,
       brief: data.brief,
       message: data.message,
-      channel: data.channel,
-      scheduled_at,
+const campaign = (await Campaign.create({
+  campaign_id,
+  company_id: company._id,
+  brief: data.brief,
+  message: data.message,
+  channel: data.channel,
+  scheduled_at,
+  snapshot,
+})) as any;
       snapshot,
     })) as any;
 
@@ -174,23 +190,25 @@ const eventSchema = z.object({
 
 async function updateCampaignAggregates(campaignId: any) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
   const agg = await CampaignEvent.aggregate([
     { $match: { campaign_id: campaignId, occurred_at: { $gte: since } } },
-    { $group: { _id: '$type', count: { $sum: 1 } } },
+    { $group: { _id: "$type", count: { $sum: 1 } } },
   ]);
+
   const counts: any = { replies_7d: 0, clicks_7d: 0, bookings_7d: 0 };
   for (const a of agg) {
-    if (a._id === 'reply') counts.replies_7d = a.count;
-    if (a._id === 'click') counts.clicks_7d = a.count;
-    if (a._id === 'booking') counts.bookings_7d = a.count;
+    if (a._id === "reply") counts.replies_7d = a.count;
+    if (a._id === "click") counts.clicks_7d = a.count;
+    if (a._id === "booking") counts.bookings_7d = a.count;
   }
+
   await CampaignResult.findOneAndUpdate(
     { campaign_id: campaignId },
     { campaign_id: campaignId, ...counts },
     { upsert: true }
   );
 }
-
 app.post('/record_campaign_event', async (req, res) => {
   try {
     const data = eventSchema.parse(req.body);
@@ -203,7 +221,7 @@ app.post('/record_campaign_event', async (req, res) => {
       type: data.type,
       metadata: data.metadata,
     });
-    await updateCampaignAggregates(campaign._id);
+await updateCampaignAggregates(campaign._id);
     res.json({ status: 'ok' });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });

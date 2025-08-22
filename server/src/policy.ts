@@ -80,10 +80,10 @@ export function suggestNextAllowedTime(
   }
 }
 
-import { Company } from './models/index.js';
+import { Company } from './models';
 
 export async function getPolicyStatus(company_id: string, channel: string) {
-  const company = await Company.findOne({ company_id }).lean();
+  const company = (await Company.findOne({ company_id }).lean()) as any;
   if (!company) {
     throw new Error('company not found');
   }

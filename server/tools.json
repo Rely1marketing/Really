@@ -58,9 +58,11 @@
         "company_id": { "type": "string" },
         "campaign_id": { "type": "string" },
         "brief": { "type": "string" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "channel": { "type": "string" },
+        "scheduled_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["company_id"]
+      "required": ["company_id", "channel"]
     }
   },
   {
@@ -75,6 +77,22 @@
         "bookings_7d": { "type": "number" }
       },
       "required": ["campaign_id"]
+    }
+  },
+  {
+    "name": "record_campaign_event",
+    "description": "Log a campaign event such as delivery or reply",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "campaign_id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["delivered", "reply", "click", "booking"]
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "required": ["campaign_id", "type"]
     }
   },
   {
@@ -122,7 +140,8 @@
       "type": "object",
       "properties": {
         "company_id": { "type": "string" },
-        "channel": { "type": "string" }
+        "channel": { "type": "string" },
+        "datetime": { "type": "string", "format": "date-time" }
       },
       "required": ["company_id", "channel"]
     }

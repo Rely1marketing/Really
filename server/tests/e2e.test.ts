@@ -2,7 +2,7 @@ import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import app from '../src/server';
-import { CampaignEvent, Campaign } from '../src/models';
+import { CampaignEvent, Campaign, CampaignResult } from '../src/models';
 
 async function main() {
   const mongo = await MongoMemoryServer.create();

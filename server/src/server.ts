@@ -13,9 +13,18 @@ import {
 import { ensureIndexes } from './initIndexes';
 import { randomUUID } from 'crypto';
 import { getPolicyStatus } from './policy';
+import { randomUUID } from 'crypto';
+import { getPolicyStatus } from './policy';
+import { tracer } from './telemetry';
 
 const app = express();
 app.use(express.json());
+
+app.use((req, res, next) => {
+  const span = tracer.startSpan(`${req.method} ${req.path}`);
+  res.on('finish', () => span.end());
+  next();
+});
 
 // save_company_profile
 const companySchema = z.object({
@@ -106,7 +115,7 @@ const policy = await getPolicyStatus(
 );
 
 if (!policy.allowed && policy.suggested_time) {
-  // Om din Mongoose-modell vill ha Date:
+  // Om ditt Mongoose-schema kräver Date:
   // scheduled_at = new Date(policy.suggested_time);
   scheduled_at = policy.suggested_time;
 }
